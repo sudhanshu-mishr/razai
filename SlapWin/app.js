@@ -119,6 +119,13 @@ function bindEvents() {
   DOM.btnCloseMenu.addEventListener('click', toggleMenu);
   DOM.btnSimulate.addEventListener('click', () => triggerSlap(Math.random() * 2 + 1.5));
 
+  // Click/Lick to slap on the main container
+  document.getElementById('app-container').addEventListener('click', (e) => {
+    // Prevent triggering if clicking on UI elements like the menu or onboarding
+    if (!DOM.menu.classList.contains('hidden') || !DOM.onboarding.classList.contains('hidden')) return;
+    triggerSlap(Math.random() * 2 + 1.5);
+  });
+
   DOM.rngSensitivity.addEventListener('input', (e) => {
     AppState.sensitivity = parseFloat(e.target.value);
     DOM.valSensitivity.innerText = AppState.sensitivity.toFixed(1);
