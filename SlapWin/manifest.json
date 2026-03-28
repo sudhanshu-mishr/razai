@@ -1,0 +1,28 @@
+{
+  "name": "SlapWin",
+  "short_name": "SlapWin",
+  "description": "Slap or shake your device to hear it react.",
+  "start_url": "./",
+  "display": "fullscreen",
+  "background_color": "#050505",
+  "theme_color": "#ff0055",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

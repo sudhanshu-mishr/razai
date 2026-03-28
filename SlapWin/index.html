@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="SlapWin - PWA that reacts to device slaps/shakes with sounds.">
+  <title>SlapWin</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Fullscreen Flash Overlay -->
+  <div id="flash-overlay" class="hidden"></div>
+
+  <!-- Main content acts as an invisible background catcher -->
+  <main id="app-container">
+    <div id="indicator" class="hidden">Slapped!</div>
+  </main>
+
+  <!-- Onboarding Popup -->
+  <div id="onboarding" class="modal">
+    <div class="modal-content">
+      <h1>Welcome to SlapWin 👋</h1>
+      <p>Give your device a gentle slap or shake to hear it react!</p>
+      <ul>
+        <li>Works offline as a PWA.</li>
+        <li>Open menu: <strong>Right-Click</strong>, tap the screen with two fingers, or press <strong>Ctrl+Shift+S</strong>.</li>
+        <li>Simulate Slap: Press <strong>Spacebar</strong>.</li>
+      </ul>
+      <button id="btn-start" class="btn-primary">Enable Sensors & Start</button>
+    </div>
+  </div>
+
+  <!-- Hidden UI / Settings Menu -->
+  <aside id="settings-menu" class="hidden">
+    <div class="menu-header">
+      <h2>SlapWin Settings</h2>
+      <button id="btn-close-menu" class="btn-icon" aria-label="Close menu">&times;</button>
+    </div>
+
+    <div class="menu-body">
+      <div class="stats-card">
+        <div class="stat">
+          <span class="stat-label">Session Slaps</span>
+          <span id="stat-session" class="stat-value">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Lifetime Slaps</span>
+          <span id="stat-lifetime" class="stat-value">0</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="select-pack">Sound Pack</label>
+        <select id="select-pack">
+          <option value="sexy">Sexy</option>
+          <option value="goat">Goat</option>
+          <option value="protest">Protest</option>
+          <option value="pain">Pain</option>
+          <option value="robot">Robot</option>
+          <option value="alien">Alien</option>
+          <option value="ghost">Ghost</option>
+          <option value="laser">Laser</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="range-sensitivity">Sensitivity: <span id="val-sensitivity">1.5</span>g</label>
+        <input type="range" id="range-sensitivity" min="0.5" max="5.0" step="0.1" value="1.5">
+        <small>Lower = more sensitive</small>
+      </div>
+
+      <div class="control-group">
+        <label for="range-cooldown">Cooldown: <span id="val-cooldown">1.0</span>s</label>
+        <input type="range" id="range-cooldown" min="0.1" max="5.0" step="0.1" value="1.0">
+      </div>
+
+      <div class="control-group">
+        <label for="range-volume">Master Volume: <span id="val-volume">100</span>%</label>
+        <input type="range" id="range-volume" min="0" max="100" step="1" value="100">
+      </div>
+
+      <button id="btn-simulate" class="btn-secondary">Simulate Slap (Space)</button>
+    </div>
+  </aside>
+
+  <script src="app.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+          console.log('SW registered!', reg);
+        }).catch(err => {
+          console.error('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

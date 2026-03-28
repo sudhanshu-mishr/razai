@@ -1,0 +1,8 @@
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore npm logs (if people use http-server/serve)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
