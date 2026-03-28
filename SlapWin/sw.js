@@ -1,4 +1,4 @@
-const CACHE_NAME = 'slapwin-cache-v2';
+const CACHE_NAME = 'slapwin-cache-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS_TO_CACHE = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon.svg',
+  './images/slap_image.webp',
   './sounds/sound1.mp3',
   './sounds/sound2.mp3',
   './sounds/sound3.mp3'

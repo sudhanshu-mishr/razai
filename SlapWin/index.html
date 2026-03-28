@@ -11,12 +11,16 @@
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
+
+  <!-- MediaPipe Vision -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"></script>
 </head>
 <body>
   <div id="flash-overlay" class="hidden"></div>
 
   <main id="app-container">
-    <div id="indicator" class="hidden">Slapped!</div>
+    <video id="webcam" autoplay playsinline class="hidden"></video>
+    <img id="indicator" src="images/slap_image.webp" alt="Slap Indicator" class="hidden">
   </main>
 
   <div id="onboarding" class="modal">
@@ -26,9 +30,11 @@
       <ul>
         <li>Works offline as a PWA.</li>
         <li>Open menu: <strong>Right-Click</strong>, tap the screen with two fingers, or press <strong>Ctrl+Shift+S</strong>.</li>
+        <li>Open menu: <strong>Right-Click</strong>, tap the screen with two fingers, or press <strong>Ctrl+Shift+S</strong>.</li>
         <li>Simulate Slap: Press <strong>Spacebar</strong>.</li>
+        <li><strong>New:</strong> Enable camera in settings to slap with a Thumbs Up gesture! 👍</li>
       </ul>
-      <p style="color:#aaa; font-size: 0.8rem; margin-bottom:1rem;">Add your custom MP3/OGG sound files directly to the <code>sounds/</code> folder and update <code>SOUND_FILES</code> in <code>app.js</code>.</p>
+      <p style="color:#aaa; font-size: 0.8rem; margin-bottom:1rem;">Default placeholders are loaded. You can upload custom MP3/OGG sound effects via the settings menu once started.</p>
       <button id="btn-start" class="btn-primary">Enable Sensors & Start</button>
     </div>
   </div>
@@ -49,6 +55,24 @@
           <span class="stat-label">Lifetime Slaps</span>
           <span id="stat-lifetime" class="stat-value">0</span>
         </div>
+      </div>
+
+      <div class="control-group switch-group">
+        <label for="toggle-camera">Camera Gestures (Thumbs Up)</label>
+        <label class="switch">
+          <input type="checkbox" id="toggle-camera">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <small id="camera-status" style="display: block; margin-bottom: 1.2rem; margin-top: -0.8rem; color: var(--text-secondary);"></small>
+
+      <div class="control-group">
+        <label>Custom Sound Effects</label>
+        <div class="upload-container">
+          <label for="file-upload" class="btn-upload">Choose MP3/OGG Files</label>
+          <input id="file-upload" type="file" accept="audio/mpeg, audio/ogg" multiple class="hidden">
+        </div>
+        <small id="upload-status" style="margin-top: 0.5rem; display: block;"></small>
       </div>
 
       <div class="control-group">
