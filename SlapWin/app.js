@@ -1,6 +1,6 @@
 /**
  * SlapWin - Core Application Logic
- * Implements DeviceMotion sensing, Web Audio generation, and UI state.
+ * Implements DeviceMotion sensing, Web Audio playback, and UI state.
  */
 
 // --- Constants & State ---
@@ -8,13 +8,22 @@ const AppState = {
   sensitivity: parseFloat(localStorage.getItem('sw_sensitivity')) || 1.5,
   cooldown: parseFloat(localStorage.getItem('sw_cooldown')) || 1.0,
   volume: parseInt(localStorage.getItem('sw_volume')) || 100,
-  pack: localStorage.getItem('sw_pack') || 'sexy',
   sessionSlaps: 0,
   lifetimeSlaps: parseInt(localStorage.getItem('sw_lifetime_slaps')) || 0,
   lastSlapTime: 0,
   audioContext: null,
-  isSensorsEnabled: false
+  isSensorsEnabled: false,
+  audioBuffers: [] // Stores decoded audio data
 };
+
+// --- Sound Files ---
+// List of your actual audio files here.
+// For production, place .mp3/.ogg files in the 'sounds' folder.
+const SOUND_FILES = [
+  'sounds/sound1.mp3',
+  'sounds/sound2.mp3',
+  'sounds/sound3.mp3'
+];
 
 // --- DOM Elements ---
 const DOM = {
@@ -27,30 +36,28 @@ const DOM = {
   btnSimulate: document.getElementById('btn-simulate'),
   statSession: document.getElementById('stat-session'),
   statLifetime: document.getElementById('stat-lifetime'),
-  selPack: document.getElementById('select-pack'),
   rngSensitivity: document.getElementById('range-sensitivity'),
   valSensitivity: document.getElementById('val-sensitivity'),
   rngCooldown: document.getElementById('range-cooldown'),
   valCooldown: document.getElementById('val-cooldown'),
   rngVolume: document.getElementById('range-volume'),
-  valVolume: document.getElementById('val-volume')
+  valVolume: document.getElementById('val-volume'),
+  loadingText: document.getElementById('loading-text')
 };
 
 // --- Initialization ---
-function init() {
+async function init() {
   updateStatsUI();
   loadSettingsUI();
   bindEvents();
 
-  // If user already onboarded in a previous session (check lifetime slaps or explicit flag)
   if (localStorage.getItem('sw_onboarded') === 'true') {
     DOM.onboarding.classList.add('hidden');
-    enableSensors();
+    await enableSensors();
   }
 }
 
 function loadSettingsUI() {
-  DOM.selPack.value = AppState.pack;
   DOM.rngSensitivity.value = AppState.sensitivity;
   DOM.valSensitivity.innerText = AppState.sensitivity.toFixed(1);
   DOM.rngCooldown.value = AppState.cooldown;
@@ -61,20 +68,20 @@ function loadSettingsUI() {
 
 // --- Event Binding ---
 function bindEvents() {
-  // Onboarding Start
-  DOM.btnStart.addEventListener('click', () => {
+  DOM.btnStart.addEventListener('click', async () => {
     localStorage.setItem('sw_onboarded', 'true');
+    DOM.btnStart.innerText = "Loading sounds...";
+    DOM.btnStart.disabled = true;
+
+    await enableSensors();
     DOM.onboarding.classList.add('hidden');
-    enableSensors();
   });
 
-  // Settings Menu Toggles
   window.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     toggleMenu();
   });
 
-  // Double tap to open menu (mobile fallback)
   let lastTap = 0;
   document.addEventListener('touchstart', (e) => {
     const currentTime = new Date().getTime();
@@ -89,8 +96,8 @@ function bindEvents() {
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'S') toggleMenu();
     if (e.key === ' ' && DOM.onboarding.classList.contains('hidden') && DOM.menu.classList.contains('hidden')) {
-      e.preventDefault(); // prevent scrolling
-      triggerSlap(Math.random() * 2 + 1.5); // Simulate random force
+      e.preventDefault();
+      triggerSlap(Math.random() * 2 + 1.5);
     }
     if (e.key === 'Escape' && !DOM.menu.classList.contains('hidden')) {
       toggleMenu();
@@ -99,12 +106,6 @@ function bindEvents() {
 
   DOM.btnCloseMenu.addEventListener('click', toggleMenu);
   DOM.btnSimulate.addEventListener('click', () => triggerSlap(Math.random() * 2 + 1.5));
-
-  // Settings Updates
-  DOM.selPack.addEventListener('change', (e) => {
-    AppState.pack = e.target.value;
-    localStorage.setItem('sw_pack', AppState.pack);
-  });
 
   DOM.rngSensitivity.addEventListener('input', (e) => {
     AppState.sensitivity = parseFloat(e.target.value);
@@ -125,11 +126,11 @@ function bindEvents() {
   });
 }
 
-// --- Sensor Handling ---
-function enableSensors() {
+// --- Sensor Handling & Audio Init ---
+async function enableSensors() {
   if (AppState.isSensorsEnabled) return;
 
-  // Initialize Web Audio Context on first user interaction
+  // Initialize Web Audio Context
   if (!AppState.audioContext) {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     AppState.audioContext = new AudioContext();
@@ -137,18 +138,22 @@ function enableSensors() {
     AppState.audioContext.resume();
   }
 
+  // Pre-load audio files into buffers
+  await loadAudioFiles();
+
   // Request permission for iOS 13+ devices
   if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-    DeviceMotionEvent.requestPermission()
-      .then(response => {
-        if (response == 'granted') {
-          window.addEventListener('devicemotion', handleMotion);
-          AppState.isSensorsEnabled = true;
-        } else {
-          alert('Motion sensor permission denied. You can still use Spacebar to simulate slaps.');
-        }
-      })
-      .catch(console.error);
+    try {
+      const response = await DeviceMotionEvent.requestPermission();
+      if (response == 'granted') {
+        window.addEventListener('devicemotion', handleMotion);
+        AppState.isSensorsEnabled = true;
+      } else {
+        alert('Motion sensor permission denied. You can still use Spacebar to simulate slaps.');
+      }
+    } catch (e) {
+      console.error(e);
+    }
   } else {
     // Non-iOS or older devices
     window.addEventListener('devicemotion', handleMotion);
@@ -156,16 +161,36 @@ function enableSensors() {
   }
 }
 
+// Loads audio files over network/cache and decodes them into memory for instant playback
+async function loadAudioFiles() {
+  AppState.audioBuffers = [];
+
+  for (const url of SOUND_FILES) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.warn(`Could not load sound: ${url}`);
+        continue;
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const decodedBuffer = await AppState.audioContext.decodeAudioData(arrayBuffer);
+      AppState.audioBuffers.push(decodedBuffer);
+    } catch (err) {
+      console.error(`Error decoding sound ${url}:`, err);
+    }
+  }
+
+  if (AppState.audioBuffers.length === 0) {
+    console.warn("No sounds loaded. Please place .mp3 files in the sounds/ directory and update the SOUND_FILES array.");
+  }
+}
+
 function handleMotion(event) {
   if (!event.accelerationIncludingGravity) return;
 
   const { x, y, z } = event.accelerationIncludingGravity;
-  // Calculate magnitude of acceleration
-  // Subtract 9.8 (1g) to roughly account for gravity if device is at rest
   const magnitude = Math.sqrt(x*x + y*y + z*z) / 9.8;
 
-  // High-pass filter basic implementation (only react to sudden changes)
-  // If magnitude exceeds sensitivity threshold
   if (magnitude > AppState.sensitivity) {
     triggerSlap(magnitude);
   }
@@ -178,27 +203,21 @@ function triggerSlap(force) {
 
   AppState.lastSlapTime = now;
 
-  // Update Stats
   AppState.sessionSlaps++;
   AppState.lifetimeSlaps++;
   localStorage.setItem('sw_lifetime_slaps', AppState.lifetimeSlaps);
   updateStatsUI();
 
-  // Visual Feedback
   playVisuals();
-
-  // Audio Feedback
-  playProceduralSound(force);
+  playSound(force);
 }
 
 function playVisuals() {
-  // Flash Screen
   DOM.overlay.classList.remove('hidden');
   DOM.overlay.classList.remove('flash-anim');
   void DOM.overlay.offsetWidth; // trigger reflow
   DOM.overlay.classList.add('flash-anim');
 
-  // Text Indicator
   DOM.indicator.classList.remove('hidden');
   DOM.indicator.style.animation = 'none';
   void DOM.indicator.offsetWidth; // trigger reflow
@@ -218,137 +237,32 @@ function toggleMenu() {
   DOM.menu.classList.toggle('hidden');
 }
 
-// --- Procedural Audio Generation (Web Audio API) ---
-// Generates sounds dynamically to keep the app 100% offline without large sound files.
-function playProceduralSound(force) {
-  if (!AppState.audioContext) return;
+// --- Audio Playback ---
+function playSound(force) {
+  if (!AppState.audioContext || AppState.audioBuffers.length === 0) return;
 
   const ctx = AppState.audioContext;
   if (ctx.state === 'suspended') ctx.resume();
 
-  const osc = ctx.createOscillator();
+  // Pick a random sound
+  const randomBuffer = AppState.audioBuffers[Math.floor(Math.random() * AppState.audioBuffers.length)];
+
+  const source = ctx.createBufferSource();
+  source.buffer = randomBuffer;
+
   const gainNode = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
 
-  osc.connect(filter);
-  filter.connect(gainNode);
+  source.connect(gainNode);
   gainNode.connect(ctx.destination);
-
-  const t = ctx.currentTime;
 
   // Normalize force for volume mapping (min force ~1.5, max ~5.0+)
   const normalizedForce = Math.min(Math.max((force - 1.0) / 4.0, 0.1), 1.0);
   const masterVolume = AppState.volume / 100;
 
-  // Map parameters based on selected Pack
-  let duration = 0.5;
+  // Scale volume based on slap force and user settings
+  gainNode.gain.value = normalizedForce * masterVolume * 1.5;
 
-  switch(AppState.pack) {
-    case 'sexy':
-      // Moan-like: Sine wave, sliding pitch down, low-pass filter
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400 + Math.random() * 200, t);
-      osc.frequency.exponentialRampToValueAtTime(150 + Math.random() * 50, t + 0.6);
-      filter.type = 'lowpass';
-      filter.frequency.value = 800;
-      duration = 0.6 + Math.random() * 0.4;
-      break;
-
-    case 'goat':
-      // Bleat: Sawtooth, vibrato, quick attack
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(300 + Math.random() * 100, t);
-      osc.frequency.linearRampToValueAtTime(250 + Math.random() * 50, t + 0.4);
-      filter.type = 'bandpass';
-      filter.frequency.value = 1200;
-      duration = 0.4 + Math.random() * 0.2;
-      break;
-
-    case 'protest':
-      // Megaphone shout: Square, high mid filter
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(200 + Math.random() * 150, t);
-      osc.frequency.linearRampToValueAtTime(180, t + 0.3);
-      filter.type = 'lowpass';
-      filter.frequency.value = 2000;
-      duration = 0.5;
-      break;
-
-    case 'pain':
-      // Oof/Grunt: Triangle, low pitch, sharp decay
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(120 + Math.random() * 50, t);
-      osc.frequency.exponentialRampToValueAtTime(60, t + 0.2);
-      filter.type = 'lowpass';
-      filter.frequency.value = 400;
-      duration = 0.2 + Math.random() * 0.1;
-      break;
-
-    case 'robot':
-      // Robotic: Square wave, stepped frequency
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(150, t);
-      osc.frequency.setValueAtTime(300, t + 0.1);
-      osc.frequency.setValueAtTime(200, t + 0.2);
-      filter.type = 'highpass';
-      filter.frequency.value = 1000;
-      duration = 0.3;
-      break;
-
-    case 'alien':
-      // Sci-fi sweep: Sine, fast high-to-low sweep
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(2000, t);
-      osc.frequency.exponentialRampToValueAtTime(100, t + 0.5);
-      filter.type = 'allpass';
-      duration = 0.5;
-      break;
-
-    case 'ghost':
-      // Spooky howl: Sine, slow attack, slow release
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(300 + Math.random() * 100, t);
-      osc.frequency.linearRampToValueAtTime(350, t + 0.5);
-      osc.frequency.linearRampToValueAtTime(250, t + 1.0);
-      filter.type = 'lowpass';
-      filter.frequency.value = 600;
-      duration = 1.0;
-      break;
-
-    case 'laser':
-      // Pew pew: Sawtooth, extreme fast downward pitch sweep
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1500 + Math.random() * 500, t);
-      osc.frequency.exponentialRampToValueAtTime(100, t + 0.2);
-      filter.type = 'bandpass';
-      filter.frequency.value = 1500;
-      duration = 0.2;
-      break;
-  }
-
-  // Envelope (Volume Control)
-  // Scale max volume by the force of the slap and user master volume
-  const maxVol = normalizedForce * masterVolume * 2.0; // Boost max slightly
-
-  gainNode.gain.setValueAtTime(0, t);
-
-  if (AppState.pack === 'ghost') {
-    // Slow attack/release for ghost
-    gainNode.gain.linearRampToValueAtTime(maxVol, t + 0.3);
-    gainNode.gain.linearRampToValueAtTime(0, t + duration);
-  } else if (AppState.pack === 'pain') {
-    // Sharp attack/decay
-    gainNode.gain.linearRampToValueAtTime(maxVol, t + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, t + duration);
-  } else {
-    // Standard ADSR approximation
-    gainNode.gain.linearRampToValueAtTime(maxVol, t + 0.05); // Attack
-    gainNode.gain.exponentialRampToValueAtTime(maxVol * 0.5, t + 0.1); // Decay
-    gainNode.gain.linearRampToValueAtTime(0.01, t + duration); // Release
-  }
-
-  osc.start(t);
-  osc.stop(t + duration + 0.1);
+  source.start(0);
 }
 
 // Start App

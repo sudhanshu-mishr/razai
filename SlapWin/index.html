@@ -13,15 +13,12 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Fullscreen Flash Overlay -->
   <div id="flash-overlay" class="hidden"></div>
 
-  <!-- Main content acts as an invisible background catcher -->
   <main id="app-container">
     <div id="indicator" class="hidden">Slapped!</div>
   </main>
 
-  <!-- Onboarding Popup -->
   <div id="onboarding" class="modal">
     <div class="modal-content">
       <h1>Welcome to SlapWin 👋</h1>
@@ -31,11 +28,11 @@
         <li>Open menu: <strong>Right-Click</strong>, tap the screen with two fingers, or press <strong>Ctrl+Shift+S</strong>.</li>
         <li>Simulate Slap: Press <strong>Spacebar</strong>.</li>
       </ul>
+      <p style="color:#aaa; font-size: 0.8rem; margin-bottom:1rem;">Add your custom MP3/OGG sound files directly to the <code>sounds/</code> folder and update <code>SOUND_FILES</code> in <code>app.js</code>.</p>
       <button id="btn-start" class="btn-primary">Enable Sensors & Start</button>
     </div>
   </div>
 
-  <!-- Hidden UI / Settings Menu -->
   <aside id="settings-menu" class="hidden">
     <div class="menu-header">
       <h2>SlapWin Settings</h2>
@@ -52,20 +49,6 @@
           <span class="stat-label">Lifetime Slaps</span>
           <span id="stat-lifetime" class="stat-value">0</span>
         </div>
-      </div>
-
-      <div class="control-group">
-        <label for="select-pack">Sound Pack</label>
-        <select id="select-pack">
-          <option value="sexy">Sexy</option>
-          <option value="goat">Goat</option>
-          <option value="protest">Protest</option>
-          <option value="pain">Pain</option>
-          <option value="robot">Robot</option>
-          <option value="alien">Alien</option>
-          <option value="ghost">Ghost</option>
-          <option value="laser">Laser</option>
-        </select>
       </div>
 
       <div class="control-group">
